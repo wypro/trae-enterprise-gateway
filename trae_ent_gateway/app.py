@@ -13,6 +13,7 @@ import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
+from . import anthropic_api
 from . import credits as credits_mod
 from . import oauth as oauth_mod
 from . import pool as pool_mod
@@ -322,9 +323,9 @@ def create_app(
 
         if last_failure:
             status, kind, message = last_failure
-            return _openai_error(status, kind, message)
-        return _openai_error(
-            401, "no_credential",
+            return _wire_error(wire, status, kind, message)
+        return _wire_error(
+            wire, 401, "no_credential",
             "账号池无可用账号（全部冷却 / 禁用 / 无凭据），请检查 accounts.json 与 /status",
         )
 
@@ -334,6 +335,12 @@ def create_app(
             return body if isinstance(body, dict) else None
         except ValueError:
             return None
+
+    def _wire_error(wire: str, status: int, kind: str, message: str) -> JSONResponse:
+        """按 wire 输出错误体（anthropic 用 {type:error} 信封，其余用 OpenAI 形状）。"""
+        if wire == "anthropic":
+            return JSONResponse(status_code=status, content=anthropic_api.error_payload(kind, message))
+        return _openai_error(status, kind, message)
 
     @app.post("/v1/chat/completions")
     async def chat_completions(request: Request) -> Response:
@@ -360,6 +367,21 @@ def create_app(
             return _openai_error(400, "invalid_request_error", f"Responses 请求解析失败: {error}")
         resp_id = f"resp_{protocol.uuid_like()}"
         return await _chat_pipeline(chat_body, "responses", resp_id, request)
+
+    @app.post("/v1/messages")
+    async def anthropic_messages(request: Request) -> Response:
+        denied = await _auth(request)
+        if denied:
+            return denied
+        body = await _parse_json_body(request)
+        if body is None:
+            return _openai_error(400, "invalid_request_error", "请求体不是合法 JSON")
+        try:
+            chat_body = anthropic_api.parse_request(body)
+        except Exception as error:  # noqa: BLE001 — 请求形状不对时明确回 400
+            return _openai_error(400, "invalid_request_error", f"Anthropic 请求解析失败: {error}")
+        msg_id = f"msg_{protocol.uuid_like()}"
+        return await _chat_pipeline(chat_body, "anthropic", msg_id, request)
 
     # ------------------------------------------------------------------
     # 出站与转换
@@ -433,6 +455,9 @@ def create_app(
             adapter = None
             if wire == "responses":
                 adapter = responses_api.ResponsesStreamAdapter(resp_id or chat_id, model)
+            elif wire == "anthropic":
+                adapter = anthropic_api.AnthropicStreamAdapter(resp_id or chat_id, model)
+            if adapter is not None:
                 for line in adapter.start():
                     yield line.encode("utf-8")
             try:
@@ -502,11 +527,20 @@ def create_app(
                         status, kind_out, message, model, resp_id or chat_id
                     ),
                 )
+            if wire == "anthropic":
+                return JSONResponse(
+                    status_code=status,
+                    content=anthropic_api.error_payload(kind_out, message),
+                )
             return _openai_error(status, kind_out, message)
         bind(sticky_key, account.uid or account.name)
         if wire == "responses":
             return JSONResponse(
                 responses_api.to_response_object(payload, model, resp_id or chat_id)
+            )
+        if wire == "anthropic":
+            return JSONResponse(
+                anthropic_api.to_message_object(payload, model, resp_id or chat_id)
             )
         return JSONResponse(payload)
 
