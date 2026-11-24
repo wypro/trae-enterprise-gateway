@@ -282,7 +282,8 @@ def create_app(
                 device_id=account.device_id,
                 machine_id=account.machine_id,
                 max_mode=config.max_mode,
-                prompt_max_tokens=config.prompt_max_tokens,
+                # 上游硬上限 168000：配置误填更大值时钳制，防 4001 打挂全部请求
+                prompt_max_tokens=min(config.prompt_max_tokens, 168_000),
             )
             # 账号级出站域：企业 OAuth 账号走 saasBootConfig.apiHost（企业链路），
             # 其余走网关默认（个人链路 mchost.guru）
