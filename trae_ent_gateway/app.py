@@ -208,7 +208,7 @@ def create_app(
                 "object": "model",
                 "created": 1_753_600_000,
                 "owned_by": "trae",
-                "context_length": protocol.DEFAULT_CONTEXT_LENGTH,
+                "context_length": config.context_length,
                 "max_mode": False,
             }
             for name in protocol.MODEL_NAMES
@@ -282,6 +282,7 @@ def create_app(
                 device_id=account.device_id,
                 machine_id=account.machine_id,
                 max_mode=config.max_mode,
+                prompt_max_tokens=config.prompt_max_tokens,
             )
             # 账号级出站域：企业 OAuth 账号走 saasBootConfig.apiHost（企业链路），
             # 其余走网关默认（个人链路 mchost.guru）
