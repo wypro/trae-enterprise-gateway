@@ -1,0 +1,14 @@
+{
+  "//": "复制为 accounts.json 后填写。jwt 必填；device_id / machine_id 留空则按 uid 自动派生并固定。",
+  "//jwt": "从企业版客户端抓包 x-ide-token 头可得（裸 JWT，不带 Cloud-IDE-JWT 前缀也可，会自动剥离）",
+  "//package_type": "账号级可选字段：覆盖网关默认的 package_type（个人版 stable_cn / 企业版客户端为 SOLO_CN_ENTERPRISE）",
+  "accounts": [
+    {
+      "name": "企业号-1",
+      "jwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.xxxxx.yyyyy",
+      "device_id": "",
+      "machine_id": "",
+      "package_type": "SOLO_CN_ENTERPRISE"
+    }
+  ]
+}
