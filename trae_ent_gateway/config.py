@@ -126,11 +126,8 @@ class GatewayConfig:
     credits_refresh_minutes: int = 30
     upstream: str = DEFAULT_CONFIG["upstream"]
     account_base: str = DEFAULT_CONFIG["account_base"]
-    # 上下文控制：
-    # - prompt_max_tokens：发给上游请求体的 prompt_max_tokens，实测上限 168000
-    #   （省略或填更大 → 上游 4001 错误）；调小可省额度/降低风控暴露面
-    # - context_length：/v1/models 广告给客户端的窗口（纯展示，客户端据此裁剪历史）
-    prompt_max_tokens: int = 168_000
+    # context_length：/v1/models 广告给客户端的窗口（纯展示，客户端据此裁剪历史）。
+    # 注意：上游请求体的 prompt_max_tokens 固定 168000（魔法常量，见 protocol.py），不可配置。
     context_length: int = DEFAULT_CONTEXT_LENGTH
 
     @classmethod

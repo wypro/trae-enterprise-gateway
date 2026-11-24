@@ -285,7 +285,6 @@ def prepare_llm_chat_body(
     device_id: str,
     machine_id: str,
     max_mode: bool,
-    prompt_max_tokens: int = 168_000,
 ) -> dict[str, Any]:
     """OpenAI 请求体 → `llm_utils_chat` 请求体（逐字段对齐 payload.rs）。"""
     object_ = dict(body)
@@ -314,7 +313,10 @@ def prepare_llm_chat_body(
     object_["machine_id"] = machine_id
     object_["project_id"] = derive("proj:")
     object_["workspace_id"] = "e04cdd"
-    object_["prompt_max_tokens"] = max(1, int(prompt_max_tokens))
+    # ★ 固定 168000，不可配置：参考实现真机实测矩阵——省略 → 4001、填 1M → 4001、
+    #   唯有 168000 → 200（客户端写死的魔法常量）。它不钳制真实上下文（180051
+    #   prompt_tokens 的请求照样 200），1M 窗口由上游内部决策。
+    object_["prompt_max_tokens"] = 168_000
     object_["mode"] = "FunctionCall"
     object_["ide_version"] = TRAE_IDE_VERSION
     object_["ide_version_code"] = TRAE_IDE_VERSION_CODE
